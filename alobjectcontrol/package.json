@@ -48,5 +48,10 @@
   "dependencies": {
     "@azure/msal-node": "^5.2.1",
     "dotenv": "^17.4.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KiazY/AL-Object-Control.git"
+  },
+  "license": "MIT"
 }
