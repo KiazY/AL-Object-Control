@@ -1,0 +1,52 @@
+{
+  "name": "alobjectcontrol",
+  "displayName": "ALObjectControl",
+  "description": "Don't worry about what's the next available Object ID. Let this extension do it for you!",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.118.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:al"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "alobjectcontrol.clearCache",
+        "title": "Clear Cache",
+        "category": "AL Object Control"
+      },
+      {
+        "command": "alobjectcontrol.createConfigFile",
+        "title": "Create Config File",
+        "category": "AL Object Control"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.118.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^5.2.1",
+    "dotenv": "^17.4.2"
+  }
+}
