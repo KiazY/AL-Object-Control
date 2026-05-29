@@ -59,5 +59,6 @@
     "type": "git",
     "url": "https://github.com/KiazY/AL-Object-Control.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "icon": "icon.png"
 }

@@ -28,7 +28,7 @@ For this extension to work, you need to have:
 ### Comands
 * `AL Object Control: Create Config File`: Create a .json configuration file inside .vscode folder.
 
-    ![alt text](image-2.png)
+    ![alt text](image-3.png)
 
 * `AL Object Control: Clear Cache`: Clears cached JWT.
 
