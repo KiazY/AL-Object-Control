@@ -21,11 +21,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		async provideCompletionItems(document, position) {
 			const line = document.lineAt(position.line).text.substring(0, position.character);
 
-			const match = line.match(/^\s*(table|tableextension|page|pageextension|report|reportextension|codeunit|xmlport|query|enum|enumextension)\s+(\d*)$/i);
+			const match = line.match(/^\s*(table|tableextension|page|pageextension|report|reportextension|codeunit|xmlport|query|enum|enumextension)(?:\s+\d+)?\s*$/i);
 			if (!match) {
 				return undefined;
 			}
-			const nextId = await getLastRealObjNo(context, match[0].toString().trimEnd()) + 1;
+			const nextId = await getLastRealObjNo(context, match[1].toString().trimEnd());
 
 			const item = new vscode.CompletionItem(
 				String(nextId),
@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			item.command = {
 				command: 'alobjectcontrol.completionSelected',
 				title: 'AL Object Control: Completion selected',
-				arguments: [nextId, match[0].toString().trimEnd()]
+				arguments: [nextId, match[1].toString().trimEnd()]
 			};
 
 			return [item];

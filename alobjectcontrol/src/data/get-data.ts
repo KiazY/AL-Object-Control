@@ -51,24 +51,22 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
     return (
         Promise.all(
             [
-                getLastObjNo(headers, company_id, objectType),
-                getLastReservedObjNo(headers, company_id, objectType)
+                getAllObjsSet(headers, company_id, objectType),
+                getReservedObjsSet(headers, company_id, objectType)
             ]
-        ).then((values) => {
-            const last_obj_id = values[0];
-            const last_reserved_obj_id = values[1];
-            const value = () => {
-                if (last_reserved_obj_id !== undefined && (last_obj_id !== undefined)) {
-                    if (last_reserved_obj_id > last_obj_id) {
-                        return last_reserved_obj_id;
-                    } else { return last_obj_id; }
+        ).then(async (values) => {
+            const last_obj_set = await values[0];
+            const last_reserved_obj_set = await values[1];
+            const merged_objs_set = new Set([...last_obj_set, ...last_reserved_obj_set]);
+            for (let i = rangeFrom; i <= rangeTo; i++) {
+                if (!merged_objs_set.has(i)) {
+                    return i;
                 }
-                return rangeFrom - 1;
-            };
-            return value();
+            }
+            throw new Error('No more available IDs');
         }, (reject) => {
             console.log(reject);
-            return rangeFrom - 1;
+            return rangeFrom;
         })
     );
 }
@@ -89,40 +87,42 @@ async function getCompanyId(headers: Headers) {
     return company_id;
 }
 
-async function getLastObjNo(headers: Headers, company_id: number, objectType: string) {
+async function getAllObjsSet(headers: Headers, company_id: number, objectType: string) {
     try {
-        const all_obj_url = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_all_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$top=1&$orderby=objectID desc`;
+        const all_obj_url = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_all_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$orderby=objectID asc`;
         const all_objs_response = await fetch(all_obj_url, {
             headers: headers
         });
-
         const all_objs_data = await all_objs_response.json();
-        const lastObjId: number = all_objs_data?.value[0].objectID;
-
-        return lastObjId;
+        if (all_objs_data.value?.length !== 0) {
+            const all_objs_data_array: Array<{ odata_etag: string, objectType: string, objectID: number }> = [...all_objs_data.value].sort();
+            const existingIds = new Set(all_objs_data_array.map((item) => { return item.objectID; }).sort());
+            return (existingIds);
+        }
+        else {
+            return (new Set<number>());
+        }
+    } catch (error) {
+        throw error;
     }
-    catch (error) {
-        console.error(error);
-        return rangeFrom - 1;
-    }
-};
+}
 
-async function getLastReservedObjNo(headers: Headers, company_id: number, objectType: string) {
+async function getReservedObjsSet(headers: Headers, company_id: number, objectType: string) {
     try {
-        const reserved_objects_url: string = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_reserved_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$top=1&$orderby=objectID desc`;
+        const reserved_objects_url: string = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_reserved_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$orderby=objectID asc`;
         const reserved_objects = await fetch(reserved_objects_url, {
             headers: headers
         });
         const reserved_objects_data = await reserved_objects.json();
         if (reserved_objects_data.value?.length !== 0) {
-            const last_reserved_obj_no: number = reserved_objects_data.value[0].objectID;
-            return last_reserved_obj_no;
+            const reserved_objects_data_array: Array<{ odata_etag: string, objectType: string, objectID: number, systemCreatedAt: string }> = [...reserved_objects_data.value];
+            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.objectID; }).sort());
+            return (existingIds);
         } else {
-            return rangeFrom - 1;
+            return (new Set<number>());
         }
     } catch (error) {
-        console.error(error);
-        return rangeFrom - 1;
+        throw error;
     }
 }
 
