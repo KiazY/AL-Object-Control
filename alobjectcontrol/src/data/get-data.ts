@@ -43,6 +43,7 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
     }
     const headers = new Headers();
     headers.append("Authorization", `Bearer ${auth_token?.accessToken}`);
+    headers.append("Accept", 'application/json');
 
 
     const company_id = await getCompanyId(headers);
@@ -52,11 +53,13 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
         Promise.all(
             [
                 getAllObjsSet(headers, company_id, objectType),
-                getReservedObjsSet(headers, company_id, objectType)
+                getReservedObjsSet(headers, company_id, objectType),
+                getReservedObjsSet_sharepoint(headers, company_id, objectType)
             ]
         ).then(async (values) => {
             const last_obj_set = await values[0];
             const last_reserved_obj_set = await values[1];
+            const blablabla = await values[2];
             const merged_objs_set = new Set([...last_obj_set, ...last_reserved_obj_set]);
             for (let i = rangeFrom; i <= rangeTo; i++) {
                 if (!merged_objs_set.has(i)) {
@@ -112,6 +115,25 @@ async function getReservedObjsSet(headers: Headers, company_id: number, objectTy
         const reserved_objects_url: string = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_reserved_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$orderby=objectID asc`;
         const reserved_objects = await fetch(reserved_objects_url, {
             headers: headers
+        });
+        const reserved_objects_data = await reserved_objects.json();
+        if (reserved_objects_data.value?.length !== 0) {
+            const reserved_objects_data_array: Array<{ odata_etag: string, objectType: string, objectID: number, systemCreatedAt: string }> = [...reserved_objects_data.value];
+            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.objectID; }).sort());
+            return (existingIds);
+        } else {
+            return (new Set<number>());
+        }
+    } catch (error) {
+        throw error;
+    }
+}
+async function getReservedObjsSet_sharepoint(headers: Headers, company_id: number, objectType: string) {
+    try {
+        const reserved_objects_url = "https://myp-my.sharepoint.com/personal/admin_m365b784709_onmicrosoft_com/_api/web/lists/GetByTitle('Object Control')/items";
+
+        const reserved_objects = await fetch(reserved_objects_url, {
+            headers: headers,
         });
         const reserved_objects_data = await reserved_objects.json();
         if (reserved_objects_data.value?.length !== 0) {

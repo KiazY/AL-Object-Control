@@ -30,6 +30,33 @@ export async function reserveId(context: ExtensionContext, idToReserve: number, 
         window.showErrorMessage('Object ID was not reserved due to an error. Check the console for more information.');
     });
 }
+export async function reserveId_sharepoint(context: ExtensionContext, idToReserve: number, objectType: string) {
+
+    const config_file = await getConfigurationFile();
+    const headers = new Headers();
+    headers.append('Authorization', `Bearer ${await context.secrets?.get('token')}`);
+    headers.append('Accept', 'application/json');
+    headers.append('Content-Type', 'application/json');
+    const url = "https://myp-my.sharepoint.com/personal/lsampaio_mypartner_pt/_api/web/lists/GetByTitle('Object Control')/items";
+
+    await fetch(url,
+        {
+            headers: headers,
+            method: 'POST',
+            body: JSON.stringify({ "objectID": idToReserve, "objectType": objectType })
+        }
+    ).then(async (resolve) => {
+        if (resolve.ok) {
+            window.showInformationMessage('ID reserved successfully');
+        } else {
+            const json_response = await resolve.json();
+            window.showInformationMessage(`ID was not reserved. ${resolve.status}: ${json_response.error.message} `);
+        }
+    }, (reject) => {
+        console.error(reject);
+        window.showErrorMessage('Object ID was not reserved due to an error. Check the console for more information.');
+    });
+}
 
 export async function clearExpiredReservedObjects(context: ExtensionContext) {
     try {
