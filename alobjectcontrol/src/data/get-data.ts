@@ -1,6 +1,7 @@
 import { Uri, workspace, env, window, ExtensionContext } from 'vscode';
 import * as fs from 'fs';
 import { AuthenticationResult, PublicClientApplication } from "@azure/msal-node";
+import { config } from 'dotenv';
 
 var tenant_id: string;
 var client_id: string;
@@ -12,8 +13,12 @@ var entity_setname_all_objs: string;
 var entity_setname_reserved_objs: string;
 var rangeFrom: number;
 var rangeTo: number;
+var sharepoint_baseUrl: string;
+var sharepoint_siteName: string;
+var sharepoint_listName: string;
 
-var auth_token: AuthenticationResult | undefined;
+var auth_token_bc: AuthenticationResult | undefined;
+var auth_token_sharepoint: AuthenticationResult | undefined;
 
 export async function getLastRealObjNo(context: ExtensionContext, objectType: string) {
 
@@ -28,38 +33,51 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
     entity_setname_reserved_objs = config_file.entitySetName_ReservedObjects;
     rangeFrom = config_file.rangeFrom;
     rangeTo = config_file.rangeTo;
+    sharepoint_baseUrl = config_file.sharepoint_baseUrl;
+    sharepoint_siteName = config_file.sharepoint_siteName;
+    sharepoint_listName = config_file.sharepoint_listName;
 
     const current_date_time = new Date();
-    if (!auth_token?.accessToken || !auth_token.expiresOn || current_date_time >= auth_token.expiresOn) {
+    if (!auth_token_bc?.accessToken || !auth_token_bc.expiresOn || current_date_time >= auth_token_bc.expiresOn) {
         const choice = await window.showInformationMessage('Do you wish to authenticate to get the next ID?', 'Yes');
         if (choice === 'Yes') {
-            auth_token = await getAuthenticationToken();
-            await context.secrets.store('token', auth_token?.accessToken);
+            auth_token_bc = await getAuthenticationToken_BC();
+            auth_token_sharepoint = await getAuthenticationToken_Sharepoint();
+            await context.secrets.store('tokenBc', auth_token_bc?.accessToken);
+            await context.secrets.store('tokenSp', auth_token_sharepoint?.accessToken);
         }
     }
-    if (auth_token === undefined) {
+    if (auth_token_bc === undefined) {
         window.showWarningMessage('Authentication is required to retrieve the next ID.');
-        return rangeFrom - 1;
+        return rangeFrom;
     }
-    const headers = new Headers();
-    headers.append("Authorization", `Bearer ${auth_token?.accessToken}`);
-    headers.append("Accept", 'application/json');
+    if (auth_token_sharepoint === undefined) {
+        window.showWarningMessage('Authentication is required to retrieve the next ID.');
+        return rangeFrom;
+    }
 
+    const headers_bc = new Headers();
+    headers_bc.append("Authorization", `Bearer ${auth_token_bc?.accessToken}`);
+    headers_bc.append("Accept", 'application/json');
+    headers_bc.append("Content-Type", 'application/json;odata=nometadata');
 
-    const company_id = await getCompanyId(headers);
+    const headers_sharepoint = new Headers();
+    headers_sharepoint.append("Authorization", `Bearer ${auth_token_sharepoint?.accessToken}`);
+    headers_sharepoint.append("Accept", 'application/json');
+    headers_sharepoint.append("Content-Type", 'application/json;odata=nometadata');
+
+    const company_id = await getCompanyId(headers_bc);
 
     await context.secrets.store('companyId', company_id.toString());
     return (
         Promise.all(
             [
-                getAllObjsSet(headers, company_id, objectType),
-                getReservedObjsSet(headers, company_id, objectType),
-                getReservedObjsSet_sharepoint(headers, company_id, objectType)
+                getAllObjsSet(headers_bc, company_id, objectType),
+                getReservedObjsSet(headers_sharepoint, objectType)
             ]
         ).then(async (values) => {
             const last_obj_set = await values[0];
             const last_reserved_obj_set = await values[1];
-            const blablabla = await values[2];
             const merged_objs_set = new Set([...last_obj_set, ...last_reserved_obj_set]);
             for (let i = rangeFrom; i <= rangeTo; i++) {
                 if (!merged_objs_set.has(i)) {
@@ -109,32 +127,15 @@ async function getAllObjsSet(headers: Headers, company_id: number, objectType: s
         throw error;
     }
 }
-
-async function getReservedObjsSet(headers: Headers, company_id: number, objectType: string) {
+async function getReservedObjsSet(headers: Headers, objectType: string,) {
     try {
-        const reserved_objects_url: string = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_reserved_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$orderby=objectID asc`;
-        const reserved_objects = await fetch(reserved_objects_url, {
-            headers: headers
-        });
-        const reserved_objects_data = await reserved_objects.json();
-        if (reserved_objects_data.value?.length !== 0) {
-            const reserved_objects_data_array: Array<{ odata_etag: string, objectType: string, objectID: number, systemCreatedAt: string }> = [...reserved_objects_data.value];
-            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.objectID; }).sort());
-            return (existingIds);
-        } else {
-            return (new Set<number>());
-        }
-    } catch (error) {
-        throw error;
-    }
-}
-async function getReservedObjsSet_sharepoint(headers: Headers, company_id: number, objectType: string) {
-    try {
-        const reserved_objects_url = "https://myp-my.sharepoint.com/personal/admin_m365b784709_onmicrosoft_com/_api/web/lists/GetByTitle('Object Control')/items";
-
+        const reserved_objects_url = `${sharepoint_baseUrl}/sites/${sharepoint_siteName}/_api/web/lists/getbytitle('${sharepoint_listName}')/items?$filter=ObjectType eq '${objectType}'`; // https://m365b784709.sharepoint.com/sites/NW-B2000eBike/_api/web/lists/getbytitle('Object Control')/items?$filter=ObjectType eq '${objectType}'`
         const reserved_objects = await fetch(reserved_objects_url, {
             headers: headers,
         });
+        console.log(reserved_objects.headers.get("content-type"));
+        console.log(reserved_objects.status);
+        console.log(reserved_objects.statusText);
         const reserved_objects_data = await reserved_objects.json();
         if (reserved_objects_data.value?.length !== 0) {
             const reserved_objects_data_array: Array<{ odata_etag: string, objectType: string, objectID: number, systemCreatedAt: string }> = [...reserved_objects_data.value];
@@ -148,7 +149,7 @@ async function getReservedObjsSet_sharepoint(headers: Headers, company_id: numbe
     }
 }
 
-export async function getConfigurationFile(): Promise<{ environmentName: string, tenantId: string, clientId: string, apiPublisher: string, apiGroup: string, apiVersion: string, entitySetName_AllObjects: string, entitySetName_ReservedObjects: string, rangeFrom: number, rangeTo: number, reserved_expiresIn: number }> {
+export async function getConfigurationFile(): Promise<{ environmentName: string, tenantId: string, clientId: string, apiPublisher: string, apiGroup: string, apiVersion: string, entitySetName_AllObjects: string, entitySetName_ReservedObjects: string, rangeFrom: number, rangeTo: number, reserved_expiresIn: number, sharepoint_baseUrl: string, sharepoint_siteName: string; sharepoint_listName: string }> {
     const URIs: Uri[] = await workspace.findFiles('**/.object-control.json', null, 1);
     if (URIs.length > 0) {
         const file_content = fs.readFileSync(URIs[0].fsPath, 'utf8');
@@ -164,7 +165,11 @@ export async function getConfigurationFile(): Promise<{ environmentName: string,
             entitySetName_ReservedObjects: file_content_asJson.entitySetName.reservedObjects,
             rangeFrom: file_content_asJson.range.from,
             rangeTo: file_content_asJson.range.to,
-            reserved_expiresIn: file_content_asJson.expiresIn
+            reserved_expiresIn: file_content_asJson.expiresIn,
+            sharepoint_baseUrl: file_content_asJson.sharepointBaseUrl,
+            sharepoint_siteName: file_content_asJson.sharepointSiteName,
+            sharepoint_listName: file_content_asJson.sharepointListName
+
         });
     } else {
         window.showErrorMessage(".object-control.json doesn't exist in the current workspace.");
@@ -172,7 +177,7 @@ export async function getConfigurationFile(): Promise<{ environmentName: string,
     }
 }
 
-async function getAuthenticationToken(): Promise<AuthenticationResult> {
+async function getAuthenticationToken_BC(): Promise<AuthenticationResult> {
     const pca = new PublicClientApplication({
         auth: {
             clientId: client_id,
@@ -188,8 +193,23 @@ async function getAuthenticationToken(): Promise<AuthenticationResult> {
 
 }
 
+async function getAuthenticationToken_Sharepoint(): Promise<AuthenticationResult> {
+    const pca = new PublicClientApplication({
+        auth: {
+            clientId: client_id,
+            authority: `https://login.microsoftonline.com/${tenant_id}`
+        }
+    });
+
+    return (await pca.acquireTokenInteractive({
+        openBrowser: async (url: string) => {
+            env.openExternal(Uri.parse(url));
+        }, scopes: ['https://m365b784709-my.sharepoint.com/.default']
+    }));
+}
+
 export function clearCache(context: ExtensionContext) {
-    auth_token = undefined;
+    auth_token_bc = undefined;
     context.secrets.delete('companyId');
     context.secrets.delete('token');
 }

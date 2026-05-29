@@ -58,6 +58,18 @@
         "expiresIn": {
             "description": "The time period (hours) during which records remain in the Reserved table",
             "type": "integer"
+        },
+        "sharepointBaseUrl": {
+            "description": "Base URL of the SharePoint site used to store the AL Object Control List. e.g: https://contoso.sharepoint.com",
+            "type": "string"
+        },
+        "sharepointSiteName": {
+            "description": "Name of the SharePoint site used to store the AL Object Control List. e.g: NW-B2000eBike",
+            "type": "string"
+        },
+        "sharepointListName": {
+            "description": "Name of the SharePoint list used to store the AL Object Control List. e.g: ALObjectControlList",
+            "type": "string"
         }
     }
 }

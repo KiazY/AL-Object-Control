@@ -21,7 +21,10 @@ export async function createConfigFile() {
         "from": 50000,
         "to": 59999
     },
-    "expiresIn": 1
+    "expiresIn": 1,
+    "sharepointBaseUrl": <sharepointBaseUrl>
+    "sharepointSiteName": <sharepointSiteName>
+    "sharepointListName": <sharepointListName>
 }`,
                 { encoding: 'utf-8' }, (err: NodeJS.ErrnoException | null) => {
                     if (err !== null) {
