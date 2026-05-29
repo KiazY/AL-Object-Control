@@ -5,6 +5,7 @@ import { getLastRealObjNo, clearCache } from './data/get-data';
 import { clearExpiredReservedObjects, reserveId } from './data/post-data';
 import { createConfigFile } from './data/helper';
 
+var timer: NodeJS.Timeout | undefined;
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -53,14 +54,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		// The code you place here will be executed every time your command is executed
 		createConfigFile();
 	});
-
 	const selectedCompletionDisposable = vscode.commands.registerCommand('alobjectcontrol.completionSelected', (nextId: number, objectType: string) => {
 		// When my completion item is selected
 		console.log('alobjectcontrol.completionSelected executed');
 		Promise.all(
 			[
-				reserveId(context, nextId, objectType),
-				clearExpiredReservedObjects(context)
+				reserveId(context, nextId, objectType)
 			]
 		).then(() => {
 			console.log('Posting successfull!');
@@ -69,8 +68,17 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
+	timer = setInterval(() => {
+		clearExpiredReservedObjects(context);
+		console.log('Scheduled task executed!');
+	}, 900000); // 15min interval
+
 	context.subscriptions.push(clearTokenDisposable, completionProvider, selectedCompletionDisposable, createConfigFileDisposable);
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+	if (timer !== undefined) {
+		clearInterval(timer);
+	}
+}

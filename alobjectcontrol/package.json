@@ -25,6 +25,12 @@
         "title": "Create Config File",
         "category": "AL Object Control"
       }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": ".object-control.json",
+        "url": "./.schema.json"
+      }
     ]
   },
   "scripts": {

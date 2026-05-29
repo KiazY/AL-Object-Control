@@ -126,7 +126,7 @@ async function getReservedObjsSet(headers: Headers, company_id: number, objectTy
     }
 }
 
-export async function getConfigurationFile(): Promise<{ environmentName: string, tenantId: string, clientId: string, apiPublisher: string, apiGroup: string, apiVersion: string, entitySetName_AllObjects: string, entitySetName_ReservedObjects: string, rangeFrom: number, rangeTo: number }> {
+export async function getConfigurationFile(): Promise<{ environmentName: string, tenantId: string, clientId: string, apiPublisher: string, apiGroup: string, apiVersion: string, entitySetName_AllObjects: string, entitySetName_ReservedObjects: string, rangeFrom: number, rangeTo: number, reserved_expiresIn: number }> {
     const URIs: Uri[] = await workspace.findFiles('**/.object-control.json', null, 1);
     if (URIs.length > 0) {
         const file_content = fs.readFileSync(URIs[0].fsPath, 'utf8');
@@ -138,10 +138,11 @@ export async function getConfigurationFile(): Promise<{ environmentName: string,
             apiPublisher: file_content_asJson.APIPublisher,
             apiGroup: file_content_asJson.APIGroup,
             apiVersion: file_content_asJson.APIVersion,
-            entitySetName_AllObjects: file_content_asJson.EntitySetName_AllObjects,
-            entitySetName_ReservedObjects: file_content_asJson.EntitySetName_ReservedObjects,
+            entitySetName_AllObjects: file_content_asJson.entitySetName.allObjects,
+            entitySetName_ReservedObjects: file_content_asJson.entitySetName.reservedObjects,
             rangeFrom: file_content_asJson.range.from,
-            rangeTo: file_content_asJson.range.to
+            rangeTo: file_content_asJson.range.to,
+            reserved_expiresIn: file_content_asJson.expiresIn
         });
     } else {
         window.showErrorMessage(".object-control.json doesn't exist in the current workspace.");

@@ -1,0 +1,63 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "object-control.json",
+    "title": "Object Control Setup",
+    "type": "object",
+    "properties": {
+        "tenantId": {
+            "description": "Id of the Business Central tenant",
+            "type": "string"
+        },
+        "environmentName": {
+            "description": "Name of the Business Central Environment",
+            "type": "string"
+        },
+        "clientId": {
+            "description": "Azure App Registration's Client ID",
+            "type": "string"
+        },
+        "APIPublisher": {
+            "description": "API Publisher of the Custom APIs",
+            "type": "string"
+        },
+        "APIGroup": {
+            "description": "API Group of the Custom APIs",
+            "type": "string"
+        },
+        "APIVersion": {
+            "description": "API Version of the Custom APIs",
+            "type": "string"
+        },
+        "entitySetName": {
+            "type": "object",
+            "properties": {
+                "allObjects": {
+                    "description": "Entity Setname of the All Objects API",
+                    "type": "string"
+                },
+                "reservedObjects": {
+                    "description": "Entity Setname of the Reserved Objects API",
+                    "type": "string"
+                }
+            }
+        },
+        "range": {
+            "description": "Range of the Object IDs to suggest",
+            "type": "object",
+            "properties": {
+                "from": {
+                    "description": "From Object ID..",
+                    "type": "integer"
+                },
+                "to": {
+                    "description": "..To Object ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "expiresIn": {
+            "description": "The time period (hours) during which records remain in the Reserved table",
+            "type": "integer"
+        }
+    }
+}
