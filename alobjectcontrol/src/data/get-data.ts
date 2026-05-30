@@ -1,7 +1,6 @@
 import { Uri, workspace, env, window, ExtensionContext } from 'vscode';
 import * as fs from 'fs';
 import { AuthenticationResult, PublicClientApplication } from "@azure/msal-node";
-import { config } from 'dotenv';
 
 var tenant_id: string;
 var client_id: string;
@@ -38,7 +37,10 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
     sharepoint_listName = config_file.sharepoint_listName;
 
     const current_date_time = new Date();
-    if (!auth_token_bc?.accessToken || !auth_token_bc.expiresOn || current_date_time >= auth_token_bc.expiresOn) {
+    if (!auth_token_bc?.accessToken || !auth_token_bc.expiresOn || current_date_time >= auth_token_bc.expiresOn
+        ||
+        !auth_token_sharepoint?.accessToken || !auth_token_sharepoint.expiresOn || current_date_time >= auth_token_sharepoint.expiresOn
+    ) {
         const choice = await window.showInformationMessage('Do you wish to authenticate to get the next ID?', 'Yes');
         if (choice === 'Yes') {
             auth_token_bc = await getAuthenticationToken_BC();
@@ -55,25 +57,11 @@ export async function getLastRealObjNo(context: ExtensionContext, objectType: st
         window.showWarningMessage('Authentication is required to retrieve the next ID.');
         return rangeFrom;
     }
-
-    const headers_bc = new Headers();
-    headers_bc.append("Authorization", `Bearer ${auth_token_bc?.accessToken}`);
-    headers_bc.append("Accept", 'application/json');
-    headers_bc.append("Content-Type", 'application/json;odata=nometadata');
-
-    const headers_sharepoint = new Headers();
-    headers_sharepoint.append("Authorization", `Bearer ${auth_token_sharepoint?.accessToken}`);
-    headers_sharepoint.append("Accept", 'application/json');
-    headers_sharepoint.append("Content-Type", 'application/json;odata=nometadata');
-
-    const company_id = await getCompanyId(headers_bc);
-
-    await context.secrets.store('companyId', company_id.toString());
     return (
         Promise.all(
             [
-                getAllObjsSet(headers_bc, company_id, objectType),
-                getReservedObjsSet(headers_sharepoint, objectType)
+                getAllObjsSet(context, objectType),
+                getReservedObjsSet(objectType)
             ]
         ).then(async (values) => {
             const last_obj_set = await values[0];
@@ -108,8 +96,15 @@ async function getCompanyId(headers: Headers) {
     return company_id;
 }
 
-async function getAllObjsSet(headers: Headers, company_id: number, objectType: string) {
+async function getAllObjsSet(context: ExtensionContext, objectType: string) {
     try {
+        const headers = new Headers();
+        headers.append("Authorization", `Bearer ${auth_token_bc?.accessToken}`);
+        headers.append("Accept", 'application/json');
+        headers.append("Content-Type", 'application/json;odata=nometadata');
+        const company_id = await getCompanyId(headers);
+        await context.secrets.store('companyId', company_id.toString());
+
         const all_obj_url = `https://api.businesscentral.dynamics.com/v2.0/${tenant_id}/${environment_name}/api/${api_publisher}/${api_group}/${api_version}/companies(${company_id})/${entity_setname_all_objs}?$filter=objectType eq '${objectType}' and objectID ge ${rangeFrom} and objectID lt ${rangeTo}&$orderby=objectID asc`;
         const all_objs_response = await fetch(all_obj_url, {
             headers: headers
@@ -127,19 +122,21 @@ async function getAllObjsSet(headers: Headers, company_id: number, objectType: s
         throw error;
     }
 }
-async function getReservedObjsSet(headers: Headers, objectType: string,) {
+async function getReservedObjsSet(objectType: string,) {
     try {
+        const headers = new Headers();
+        headers.append("Authorization", `Bearer ${auth_token_sharepoint?.accessToken}`);
+        headers.append("Accept", 'application/json');
+        headers.append("Content-Type", 'application/json;odata=nometadata');
+
         const reserved_objects_url = `${sharepoint_baseUrl}/sites/${sharepoint_siteName}/_api/web/lists/getbytitle('${sharepoint_listName}')/items?$filter=ObjectType eq '${objectType}'`; // https://m365b784709.sharepoint.com/sites/NW-B2000eBike/_api/web/lists/getbytitle('Object Control')/items?$filter=ObjectType eq '${objectType}'`
         const reserved_objects = await fetch(reserved_objects_url, {
             headers: headers,
         });
-        console.log(reserved_objects.headers.get("content-type"));
-        console.log(reserved_objects.status);
-        console.log(reserved_objects.statusText);
         const reserved_objects_data = await reserved_objects.json();
         if (reserved_objects_data.value?.length !== 0) {
-            const reserved_objects_data_array: Array<{ odata_etag: string, objectType: string, objectID: number, systemCreatedAt: string }> = [...reserved_objects_data.value];
-            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.objectID; }).sort());
+            const reserved_objects_data_array = [...reserved_objects_data.value];
+            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.ObjectID ?? item.ObjectID0; }).sort());
             return (existingIds);
         } else {
             return (new Set<number>());
