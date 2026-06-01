@@ -129,16 +129,21 @@ async function getReservedObjsSet(objectType: string,) {
         headers.append("Accept", 'application/json');
         headers.append("Content-Type", 'application/json;odata=nometadata');
 
-        const reserved_objects_url = `${sharepoint_baseUrl}/sites/${sharepoint_siteName}/_api/web/lists/getbytitle('${sharepoint_listName}')/items?$filter=ObjectType eq '${objectType}'`; // https://m365b784709.sharepoint.com/sites/NW-B2000eBike/_api/web/lists/getbytitle('Object Control')/items?$filter=ObjectType eq '${objectType}'`
+        const reserved_objects_url = `${sharepoint_baseUrl}/sites/${sharepoint_siteName}/_api/web/lists/getbytitle('${sharepoint_listName}')/items?$filter=Object_x0020_Type eq '${objectType}'`; // https://m365b784709.sharepoint.com/sites/NW-B2000eBike/_api/web/lists/getbytitle('Object Control')/items?$filter=ObjectType eq '${objectType}'`
         const reserved_objects = await fetch(reserved_objects_url, {
             headers: headers,
         });
-        const reserved_objects_data = await reserved_objects.json();
-        if (reserved_objects_data.value?.length !== 0) {
-            const reserved_objects_data_array = [...reserved_objects_data.value];
-            const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.ObjectID ?? item.ObjectID0; }).sort());
-            return (existingIds);
+        if (reserved_objects.ok) {
+            const reserved_objects_data = await reserved_objects.json();
+            if (reserved_objects_data.value?.length !== 0) {
+                const reserved_objects_data_array = [...reserved_objects_data.value];
+                const existingIds = new Set(reserved_objects_data_array.map((item) => { return item.ObjectID ?? item.ObjectID0 ?? item.Object_x0020_ID; }).sort());
+                return (existingIds);
+            } else {
+                return (new Set<number>());
+            }
         } else {
+            console.log(`${reserved_objects.status}: ${reserved_objects.statusText}`);
             return (new Set<number>());
         }
     } catch (error) {
