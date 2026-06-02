@@ -11,7 +11,7 @@
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"//Users/leandro/Documents/AL/ALProject1"
+				"C:\\AL Projects\\Rubis\\Monthly_Trainning\\Monthly Training"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"

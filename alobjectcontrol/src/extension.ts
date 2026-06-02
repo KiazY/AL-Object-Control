@@ -2,8 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { getLastRealObjNo, clearCache } from './data/get-data';
-import { clearExpiredReservedObjects, reserveId } from './data/post-data';
-import { createConfigFile } from './data/helper';
+import { reserveId } from './data/post-data';
+import { createConfigFile, releaseIdListener, saveFile as saveFileListener } from './data/helper';
 
 var timer: NodeJS.Timeout | undefined;
 // This method is called when your extension is activated
@@ -54,26 +54,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		// The code you place here will be executed every time your command is executed
 		createConfigFile();
 	});
-	const selectedCompletionDisposable = vscode.commands.registerCommand('alobjectcontrol.completionSelected', (nextId: number, objectType: string) => {
-		// When my completion item is selected
-		console.log('alobjectcontrol.completionSelected executed');
-		Promise.all(
-			[
-				reserveId(context, nextId, objectType)
-			]
-		).then(() => {
-			console.log('Posting successfull!');
-		}, (reject) => {
-			console.error(reject);
-		});
-	});
 
-	timer = setInterval(() => {
-		clearExpiredReservedObjects(context);
-		console.log('Scheduled task executed!');
-	}, 900000); // 15min interval
+	const releaseIdDisposable = releaseIdListener(context);
+	const saveFileDisposable = saveFileListener(context);
 
-	context.subscriptions.push(clearTokenDisposable, completionProvider, selectedCompletionDisposable, createConfigFileDisposable);
+	context.subscriptions.push(clearTokenDisposable, completionProvider, createConfigFileDisposable, saveFileDisposable, releaseIdDisposable);
 }
 
 // This method is called when your extension is deactivated

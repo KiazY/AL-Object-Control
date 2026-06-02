@@ -5,41 +5,24 @@
     "type": "object",
     "properties": {
         "tenantId": {
-            "description": "Id of the Business Central tenant",
-            "type": "string"
-        },
-        "environmentName": {
-            "description": "Name of the Business Central Environment",
+            "description": "ID of the Sharepoint tenant",
             "type": "string"
         },
         "clientId": {
             "description": "Azure App Registration's Client ID",
             "type": "string"
         },
-        "APIPublisher": {
-            "description": "API Publisher of the Custom APIs",
+        "sharepointBaseUrl": {
+            "description": "Base URL of the SharePoint site used to store the AL Object Control List. e.g: https://contoso.sharepoint.com",
             "type": "string"
         },
-        "APIGroup": {
-            "description": "API Group of the Custom APIs",
+        "sharepointSiteName": {
+            "description": "Name of the SharePoint site used to store the AL Object Control List. e.g: NW-B2000eBike",
             "type": "string"
         },
-        "APIVersion": {
-            "description": "API Version of the Custom APIs",
+        "sharepointListName": {
+            "description": "Name of the SharePoint list used to store the AL Object Control List. e.g: ALObjectControlList",
             "type": "string"
-        },
-        "entitySetName": {
-            "type": "object",
-            "properties": {
-                "allObjects": {
-                    "description": "Entity Setname of the All Objects API",
-                    "type": "string"
-                },
-                "reservedObjects": {
-                    "description": "Entity Setname of the Reserved Objects API",
-                    "type": "string"
-                }
-            }
         },
         "range": {
             "description": "Range of the Object IDs to suggest",
@@ -54,22 +37,6 @@
                     "type": "integer"
                 }
             }
-        },
-        "expiresIn": {
-            "description": "The time period (hours) during which records remain in the Reserved table",
-            "type": "integer"
-        },
-        "sharepointBaseUrl": {
-            "description": "Base URL of the SharePoint site used to store the AL Object Control List. e.g: https://contoso.sharepoint.com",
-            "type": "string"
-        },
-        "sharepointSiteName": {
-            "description": "Name of the SharePoint site used to store the AL Object Control List. e.g: NW-B2000eBike",
-            "type": "string"
-        },
-        "sharepointListName": {
-            "description": "Name of the SharePoint list used to store the AL Object Control List. e.g: ALObjectControlList",
-            "type": "string"
         }
     }
 }
