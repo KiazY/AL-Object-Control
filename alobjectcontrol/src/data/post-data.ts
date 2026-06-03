@@ -1,5 +1,5 @@
 import { ExtensionContext, window } from "vscode";
-import { getConfigurationFile } from "./get-data";
+import { getAppJsonFile, getConfigurationFile } from "./get-data";
 
 async function objectAlreadyReserved(url: string, headers: Headers, objectName: string): Promise<boolean> {
     const escapedObjectName = objectName.replace(/'/g, "''");
@@ -17,6 +17,7 @@ async function objectAlreadyReserved(url: string, headers: Headers, objectName: 
 
 async function createReserveItem(url: string, headers: Headers, idToReserve: number, objectType: string) {
     const objectName = `${objectType} ${idToReserve}`;
+    const app_json = await getAppJsonFile();
     if (await objectAlreadyReserved(url, headers, objectName)) {
         window.showInformationMessage('ID already reserved.');
         return;
@@ -31,7 +32,7 @@ async function createReserveItem(url: string, headers: Headers, idToReserve: num
                 {
                     type: "SP.Data.Object_x0020_ControlListItem"
                 },
-                ObjectID: idToReserve, ObjectType: objectType, Title: objectName, ObjectName: objectName
+                ObjectID: idToReserve, ObjectType: objectType, Title: app_json.appName, ObjectName: objectName
             })
         }
     );

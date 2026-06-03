@@ -2,8 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { getLastRealObjNo, clearCache } from './data/get-data';
-import { reserveId } from './data/post-data';
-import { createConfigFile, releaseIdListener, saveFile as saveFileListener } from './data/helper';
+import { createConfigFile, releaseIdListener, saveFileListener } from './data/helper';
 
 var timer: NodeJS.Timeout | undefined;
 // This method is called when your extension is activated

@@ -112,7 +112,7 @@ export function releaseIdListener(context: ExtensionContext): Disposable {
     });
 }
 
-export function saveFile(context: ExtensionContext): Disposable {
+export function saveFileListener(context: ExtensionContext): Disposable {
     return workspace.onWillSaveTextDocument((e) => {
         if (e.document.languageId !== 'al') {
             return;
