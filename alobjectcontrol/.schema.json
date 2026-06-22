@@ -12,12 +12,8 @@
             "description": "Azure App Registration's Client ID",
             "type": "string"
         },
-        "sharepointBaseUrl": {
-            "description": "Base URL of the SharePoint site used to store the AL Object Control List. e.g: https://contoso.sharepoint.com",
-            "type": "string"
-        },
-        "sharepointSiteName": {
-            "description": "Name of the SharePoint site used to store the AL Object Control List. e.g: NW-B2000eBike",
+        "sharepointSiteUrl": {
+            "description": "Full URL of the SharePoint site used to store the AL Object Control List. e.g: https://contoso.sharepoint.com/sites/MySite or https://contoso.sharepoint.com/teams/MyTeam",
             "type": "string"
         },
         "sharepointListName": {

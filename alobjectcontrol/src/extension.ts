@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { getLastRealObjNo, clearCache } from './data/get-data';
-import { createConfigFile, releaseIdListener, saveFileListener } from './data/helper';
+import { createConfigFile, releaseIdListener, saveFileListener, updateDiagnostics } from './data/helper';
 
 var timer: NodeJS.Timeout | undefined;
 // This method is called when your extension is activated
@@ -26,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				return undefined;
 			}
 			const nextId = await getLastRealObjNo(context, match[1].toString().trimEnd());
+			await updateDiagnostics(document, diagnosticCollection);
 
 			const item = new vscode.CompletionItem(
 				String(nextId),
@@ -57,7 +58,28 @@ export async function activate(context: vscode.ExtensionContext) {
 	const releaseIdDisposable = releaseIdListener(context);
 	const saveFileDisposable = saveFileListener(context);
 
-	context.subscriptions.push(clearTokenDisposable, completionProvider, createConfigFileDisposable, saveFileDisposable, releaseIdDisposable);
+	const diagnosticCollection = vscode.languages.createDiagnosticCollection('al-object-control');
+	const onEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+		if (editor) {
+			await updateDiagnostics(editor.document, diagnosticCollection);
+		}
+	});
+
+	const onOpenDisposable = vscode.workspace.onDidOpenTextDocument(async (document) => {
+		await updateDiagnostics(document, diagnosticCollection);
+	});
+
+	const onSaveDisposable = vscode.workspace.onDidSaveTextDocument((document) => {
+		if (document.languageId === 'al') {
+			diagnosticCollection.delete(document.uri);
+		}
+	});
+
+	if (vscode.window.activeTextEditor) {
+		await updateDiagnostics(vscode.window.activeTextEditor.document, diagnosticCollection);
+	}
+
+	context.subscriptions.push(clearTokenDisposable, completionProvider, createConfigFileDisposable, saveFileDisposable, releaseIdDisposable, diagnosticCollection, onEditorChangeDisposable, onOpenDisposable, onSaveDisposable);
 }
 
 // This method is called when your extension is deactivated

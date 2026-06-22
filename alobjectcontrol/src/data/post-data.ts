@@ -15,7 +15,16 @@ async function objectAlreadyReserved(url: string, headers: Headers, objectName: 
     return items.length > 0;
 }
 
-async function createReserveItem(url: string, headers: Headers, idToReserve: number, objectType: string) {
+async function getListItemEntityTypeFullName(listBaseUrl: string, headers: Headers): Promise<string> {
+    const response = await fetch(`${listBaseUrl}?$select=ListItemEntityTypeFullName`, { headers });
+    if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.ListItemEntityTypeFullName ?? data.d?.ListItemEntityTypeFullName;
+}
+
+async function createReserveItem(listBaseUrl: string, url: string, headers: Headers, idToReserve: number, objectType: string) {
     const objectName = `${objectType} ${idToReserve}`;
     const app_json = await getAppJsonFile();
     if (await objectAlreadyReserved(url, headers, objectName)) {
@@ -23,6 +32,7 @@ async function createReserveItem(url: string, headers: Headers, idToReserve: num
         return;
     }
 
+    const entityType = await getListItemEntityTypeFullName(listBaseUrl, headers);
     const response = await fetch(url,
         {
             headers: headers,
@@ -30,7 +40,7 @@ async function createReserveItem(url: string, headers: Headers, idToReserve: num
             body: JSON.stringify({
                 __metadata:
                 {
-                    type: "SP.Data.Object_x0020_ControlListItem"
+                    type: entityType
                 },
                 ObjectID: idToReserve, ObjectType: objectType, Title: app_json.appName, ObjectName: objectName
             })
@@ -51,17 +61,25 @@ export async function reserveId(context: ExtensionContext, idToReserve: number, 
     headers.append('Authorization', `Bearer ${await context.secrets?.get('tokenSp')}`);
     headers.append('Accept', 'application/json;odata=verbose');
     headers.append('Content-Type', 'application/json;odata=verbose');
-    const url = `${config_file.sharepoint_baseUrl}/sites/${config_file.sharepoint_siteName}/_api/web/lists/getbytitle('${config_file.sharepoint_listName}')/items`;
+    const listBaseUrl = `${config_file.sharepoint_siteUrl}/_api/web/lists/getbytitle('${config_file.sharepoint_listName}')`;
+    const url = `${listBaseUrl}/items`;
     await fetch(url,
         {
             headers: headers
         }).then(async (resolve) => {
             if (resolve.ok) {
-                await createReserveItem(url, headers, idToReserve, objectType);
+                await createReserveItem(listBaseUrl, url, headers, idToReserve, objectType);
             } else if (resolve.status === 404) {
-                createSharepointList(headers).then(async () => {
-                    await createReserveItem(url, headers, idToReserve, objectType);
-                });
+                const choice = await window.showWarningMessage(
+                    `The SharePoint list '${config_file.sharepoint_listName}' doesn't exist yet. Do you want to create it?`,
+                    'Yes', 'No'
+                );
+                if (choice === 'Yes') {
+                    await createSharepointList(headers);
+                    await createReserveItem(listBaseUrl, url, headers, idToReserve, objectType);
+                } else {
+                    window.showInformationMessage('Object ID was not reserved. The SharePoint list was not created.');
+                }
             }
         }, (reject) => {
             console.error(reject);
@@ -83,7 +101,7 @@ async function createSharepointList(headers: Headers) {
                 Description: "Object Control List created by AL Object Control VSCode Extension",
                 OnQuickLaunch: true
             });
-        const url = `${config_file.sharepoint_baseUrl}/sites/${config_file.sharepoint_siteName}/_api/web/lists`;
+        const url = `${config_file.sharepoint_siteUrl}/_api/web/lists`;
         await fetch(url,
             { headers: headers, body: create_list_json, method: 'POST' }
         ).then(async (resolve) => {
@@ -105,7 +123,7 @@ async function createSharepointList(headers: Headers) {
 async function createSharepointField(headers: Headers, fieldName: string, fieldType: number, fieldMetadata: string, enforceUniqueValues: boolean, index: boolean) {
     // Create Sharepoint list fields
     const config_file = await getConfigurationFile();
-    const url = `${config_file.sharepoint_baseUrl}/sites/${config_file.sharepoint_siteName}/_api/web/lists/GetByTitle('${config_file.sharepoint_listName}')/fields`;
+    const url = `${config_file.sharepoint_siteUrl}/_api/web/lists/GetByTitle('${config_file.sharepoint_listName}')/fields`;
     const fields_json = JSON.stringify({
         __metadata: {
             type: `${fieldMetadata}`
@@ -128,7 +146,7 @@ async function createSharepointField(headers: Headers, fieldName: string, fieldT
 
 async function addSharepointFieldToView(headers: Headers, fieldInternalName: string) {
     const config = await getConfigurationFile();
-    const url = `${config.sharepoint_baseUrl}/sites/${config.sharepoint_siteName}/_api/web/lists/GetByTitle('${config.sharepoint_listName}')/DefaultView/ViewFields/AddViewField('${fieldInternalName}')`;
+    const url = `${config.sharepoint_siteUrl}/_api/web/lists/GetByTitle('${config.sharepoint_listName}')/DefaultView/ViewFields/AddViewField('${fieldInternalName}')`;
     const response = await fetch(url, {
         method: 'POST',
         headers
